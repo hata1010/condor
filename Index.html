@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Portal del Condominio</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    * { -webkit-tap-highlight-color: transparent; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    .gradient-bg { background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); }
+    .oculto { display: none !important; }
+    .btn-menu {
+      display: flex; align-items: center; gap: 14px;
+      padding: 16px; background: white;
+      border: 1px solid #e2e8f0; border-radius: 16px;
+      cursor: pointer; transition: all 0.15s;
+      text-align: left; width: 100%;
+    }
+    .btn-menu:active { transform: scale(0.98); border-color: #2563eb; }
+    .btn-menu:hover { border-color: #94a3b8; box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+    .btn-menu .ico {
+      width: 44px; height: 44px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; flex-shrink: 0;
+    }
+    .fade-in { animation: fadeIn 0.2s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px);} to { opacity: 1; transform: translateY(0);} }
+    .spin { animation: spin 1s linear infinite; }
+    @keyframes spin { from { transform: rotate(0deg);} to { transform: rotate(360deg);} }
+    .toast-container {
+      position: fixed; top: 80px; left: 50%; transform: translateX(-50%);
+      z-index: 9999; max-width: 92%; width: 420px;
+      display: flex; flex-direction: column; gap: 8px;
+      pointer-events: none;
+    }
+    .toast {
+      padding: 14px 18px; border-radius: 12px; color: white;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.25); font-size: 14px;
+      font-weight: 600; display: flex; align-items: flex-start; gap: 10px;
+      pointer-events: auto; opacity: 0; transform: translateY(-10px);
+      transition: all 0.3s;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.exito { background: #10b981; }
+    .toast.error { background: #dc2626; }
+    .toast.aviso { background: #f59e0b; }
+    .toast.info  { background: #3b82f6; }
+  </style>
+</head>
+<body class="bg-slate-100 font-sans min-h-screen text-slate-800">
+
+<!-- ================= LOGIN ================= -->
+<section id="sec-login" class="flex items-center justify-center min-h-screen px-4 py-8">
+  <div class="bg-white max-w-md w-full rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
+    <div class="gradient-bg p-6 text-white text-center">
+      <div id="login-logo" class="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-3">
+        <i class="fa-solid fa-building-user text-3xl"></i>
+      </div>
+      <h2 id="login-nombre" class="text-xl font-bold">Cargando...</h2>
+            <p class="text-blue-100 text-xs mt-1">
+        Portal del residente · <span id="lbl-version"></span>
+      </p>
+    </div>
+
+    <div class="flex border-b border-slate-200">
+      <button id="tab-prop" onclick="cambiarTab('PROP')"
+        class="w-1/2 py-3 text-sm font-bold text-blue-600 border-b-2 border-blue-600">
+        <i class="fa-solid fa-user mr-1"></i> Propietario
+      </button>
+      <button id="tab-admin" onclick="cambiarTab('ADMIN')"
+        class="w-1/2 py-3 text-sm font-bold text-slate-400">
+        <i class="fa-solid fa-user-shield mr-1"></i> Admin
+      </button>
+    </div>
+
+    <div id="form-prop" class="p-6 space-y-4">
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Edificio</label>
+        <select id="login-edificio" class="w-full p-3 rounded-xl border border-slate-300 text-sm bg-white">
+          <option value="">Cargando...</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Apartamento</label>
+        <select id="login-apartamento" class="w-full p-3 rounded-xl border border-slate-300 text-sm bg-white">
+          <option value="">Selecciona edificio primero</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Correo electrónico</label>
+        <input type="email" id="login-email" placeholder="tu@email.com"
+          class="w-full p-3 rounded-xl border border-slate-300 text-sm">
+      </div>
+      <button id="btn-login-prop" onclick="ingresarPropietario()"
+        class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl">
+        Ingresar
+      </button>
+    </div>
+
+    <div id="form-admin" class="p-6 space-y-4 oculto">
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Clave de administrador</label>
+        <input type="password" id="login-clave-admin" placeholder="••••••"
+          class="w-full p-3 rounded-xl border border-slate-300 text-sm">
+      </div>
+      <button id="btn-login-admin" onclick="ingresarAdmin()"
+        class="w-full py-3 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl">
+        Acceder
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- ================= PORTAL ================= -->
+<div id="sec-portal" class="oculto">
+  <header class="gradient-bg text-white shadow-md sticky top-0 z-40">
+    <div class="max-w-3xl mx-auto px-3 md:px-4 py-3 flex justify-between items-center">
+      <div class="flex items-center gap-2 md:gap-3 min-w-0">
+        <div class="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
+          <i class="fa-solid fa-building-user text-sm"></i>
+        </div>
+        <div class="min-w-0">
+          <h1 id="header-nombre" class="text-sm font-bold truncate">Condominio</h1>
+          <p id="header-user" class="text-blue-100 text-[10px] truncate">Sesión activa</p>
+        </div>
+      </div>
+      <button onclick="cerrarSesion()"
+        class="bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg text-xs font-bold flex-shrink-0">
+        Salir
+      </button>
+    </div>
+  </header>
+
+  <main class="max-w-3xl mx-auto px-3 md:px-4 py-4 md:py-6">
+
+    <div id="vista-menu" class="fade-in">
+      <h2 class="text-lg font-bold text-slate-800 mb-4 pb-2 border-b border-slate-200">
+        Panel principal
+      </h2>
+      <div id="menu-items" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+    </div>
+      
+    <?!= include('VistaPago') ?>
+    <?!= include('VistaDashboard') ?>
+    <?!= include('VistaCuenta') ?>
+    <?!= include('VistaEgreso') ?>
+    <?!= include('VistaExtracto') ?>
+    <?!= include('VistaHistoricoEgresos') ?>
+    <?!= include('VistaDashboardAdmin') ?> 
+
+  </main>
+</div>
+
+<div id="toast-container" class="toast-container"></div>
+
+<script>
+  // ============================================================
+  // VERSIÓN DEL PORTAL
+  // Actualizar cada vez que hagas un cambio importante.
+  // Formato: "v1.0", "v1.1", "v1.2", etc.
+  // ============================================================
+  window.VERSION_PORTAL = "v1.0";
+
+  window.cfg = null;
+  window.sesion = null;
+  
+
+
+ window.addEventListener("load", function() {
+    document.getElementById("lbl-version").textContent = window.VERSION_PORTAL;
+    cargarConfiguracion();
+  })
+
+  function cargarConfiguracion() {
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (!res.exito) {
+          mostrarMensaje("error", "Error al cargar configuración: " + res.error);
+          return;
+        }
+        window.cfg = res.data;
+        aplicarBranding(res.data.condominio);
+        poblarEdificios(res.data.inmuebles);
+      })
+      .withFailureHandler(function(err) {
+        mostrarMensaje("error", "No se pudo conectar con el servidor: " + err.message);
+      })
+      .apiConfiguracionInicial();
+  }
+
+  function aplicarBranding(cond) {
+    document.getElementById("login-nombre").textContent = cond.nombre || "Condominio";
+    document.getElementById("header-nombre").textContent = cond.nombre || "Condominio";
+  }
+
+  function poblarEdificios(mapa) {
+    const sel = document.getElementById("login-edificio");
+    sel.innerHTML = '<option value="">Selecciona...</option>';
+    Object.keys(mapa || {}).forEach(function(edf) {
+      const opt = document.createElement("option");
+      opt.value = edf;
+      opt.textContent = edf;
+      sel.appendChild(opt);
+    });
+    sel.onchange = actualizarApartamentos;
+  }
+
+  function actualizarApartamentos() {
+    const edf = document.getElementById("login-edificio").value;
+    const sel = document.getElementById("login-apartamento");
+    sel.innerHTML = '<option value="">Selecciona...</option>';
+    if (!edf || !window.cfg) return;
+    const lista = (window.cfg.inmuebles && window.cfg.inmuebles[edf]) || [];
+    lista.forEach(function(apt) {
+      const opt = document.createElement("option");
+      opt.value = apt;
+      opt.textContent = apt;
+      sel.appendChild(opt);
+    });
+  }
+
+  function cambiarTab(t) {
+    const p = document.getElementById("form-prop");
+    const a = document.getElementById("form-admin");
+    const bp = document.getElementById("tab-prop");
+    const ba = document.getElementById("tab-admin");
+    if (t === "PROP") {
+      p.classList.remove("oculto");
+      a.classList.add("oculto");
+      bp.className = "w-1/2 py-3 text-sm font-bold text-blue-600 border-b-2 border-blue-600";
+      ba.className = "w-1/2 py-3 text-sm font-bold text-slate-400";
+    } else {
+      p.classList.add("oculto");
+      a.classList.remove("oculto");
+      ba.className = "w-1/2 py-3 text-sm font-bold text-blue-600 border-b-2 border-blue-600";
+      bp.className = "w-1/2 py-3 text-sm font-bold text-slate-400";
+    }
+  }
+
+  function ingresarPropietario() {
+    const edf = document.getElementById("login-edificio").value;
+    const apt = document.getElementById("login-apartamento").value;
+    const email = document.getElementById("login-email").value.trim();
+    if (!edf || !apt || !email) {
+      mostrarMensaje("aviso", "Completa todos los campos.");
+      return;
+    }
+    const btn = document.getElementById("btn-login-prop");
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-circle-notch spin mr-2"></i> Verificando...';
+    google.script.run
+      .withSuccessHandler(function(res) {
+        btn.disabled = false;
+        btn.textContent = "Ingresar";
+        if (!res.exito) {
+          mostrarMensaje("error", res.error);
+          return;
+        }
+        window.sesion = res.data;
+        entrarAlPortal();
+      })
+      .withFailureHandler(function(err) {
+        btn.disabled = false;
+        btn.textContent = "Ingresar";
+        mostrarMensaje("error", "Error: " + err.message);
+      })
+      .apiLoginPropietario(edf, apt, email);
+  }
+
+  function ingresarAdmin() {
+    const clave = document.getElementById("login-clave-admin").value;
+    if (!clave) {
+      mostrarMensaje("aviso", "Ingresa la clave.");
+      return;
+    }
+    const btn = document.getElementById("btn-login-admin");
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-circle-notch spin mr-2"></i> Verificando...';
+    google.script.run
+      .withSuccessHandler(function(res) {
+        btn.disabled = false;
+        btn.textContent = "Acceder";
+        if (!res.exito) {
+          mostrarMensaje("error", res.error);
+          return;
+        }
+        window.sesion = res.data;
+        entrarAlPortal();
+      })
+      .withFailureHandler(function(err) {
+        btn.disabled = false;
+        btn.textContent = "Acceder";
+        mostrarMensaje("error", "Error: " + err.message);
+      })
+      .apiLoginAdmin(null, clave);
+  }
+
+  function entrarAlPortal() {
+    document.getElementById("sec-login").classList.add("oculto");
+    document.getElementById("sec-portal").classList.remove("oculto");
+    document.getElementById("header-user").textContent = window.sesion.esAdmin
+      ? "Administrador"
+      : (window.sesion.propietario + " · " + window.sesion.edificio + " - " + window.sesion.apartamento);
+    renderMenu();
+    mostrarVista("vista-menu");
+  }
+
+  function cerrarSesion() {
+    window.sesion = null;
+    document.getElementById("sec-portal").classList.add("oculto");
+    document.getElementById("sec-login").classList.remove("oculto");
+    cambiarTab("PROP");
+  }
+
+  function renderMenu() {
+    const esAdmin = window.sesion && window.sesion.esAdmin;
+
+    const items = esAdmin ? [
+      //////////////////////////////////////////////////////////paso 2.2
+
+      { id: "dashboard-admin", ico: "fa-chart-line", color: "blue", tit: "Panel", sub: "Resumen del condominio" },
+
+      { id: "egreso", ico: "fa-file-invoice-dollar", color: "red", tit: "Registrar egreso", sub: "Gasto del condominio" },
+      { id: "hist-egresos", ico: "fa-list", color: "amber", tit: "Histórico egresos", sub: "Todos los gastos" },      ///nuevo   historico d
+      { id: "cuotas", ico: "fa-calendar-plus", color: "blue", tit: "Cuotas del mes", sub: "Generar cuotas" },
+      { id: "extracto", ico: "fa-building-columns", color: "indigo", tit: "Cargar extracto", sub: "Banco" },
+      { id: "conciliacion", ico: "fa-scale-balanced", color: "indigo", tit: "Conciliación", sub: "Bancaria" },
+      { id: "mora", ico: "fa-triangle-exclamation", color: "amber", tit: "Mora", sub: "Gestión de deuda" },
+      { id: "comunicados", ico: "fa-bullhorn", color: "purple", tit: "Comunicados", sub: "Enviar avisos" },
+      { id: "asistente", ico: "fa-robot", color: "purple", tit: "Asistente IA", sub: "Consultas" }
+    ] : [
+      { id: "dashboard", ico: "fa-house", color: "blue", tit: "Mi panel", sub: "Resumen general" },
+      { id: "pago", ico: "fa-receipt", color: "emerald", tit: "Reportar pago", sub: "Subir comprobante" },
+      { id: "cuenta", ico: "fa-list", color: "indigo", tit: "Estado de cuenta", sub: "Cuotas y abonos" },
+      { id: "comunicados", ico: "fa-bullhorn", color: "purple", tit: "Comunicados", sub: "Mensajes de la junta" }
+    ];
+
+    const cont = document.getElementById("menu-items");
+    cont.innerHTML = items.map(function(i) {
+      return '<button onclick="irA(\'' + i.id + '\')" class="btn-menu">' +
+        '<div class="ico bg-' + i.color + '-50 text-' + i.color + '-600">' +
+        '<i class="fa-solid ' + i.ico + '"></i>' +
+        '</div>' +
+        '<div class="flex-1 min-w-0">' +
+        '<div class="text-sm font-bold text-slate-800">' + i.tit + '</div>' +
+        '<div class="text-xs text-slate-500">' + i.sub + '</div>' +
+        '</div>' +
+        '<i class="fa-solid fa-chevron-right text-slate-300 text-xs"></i>' +
+        '</button>';
+    }).join("");
+  }
+///aqui simeprpre hay cambios paso                                                     paso 2.3
+  function irA(id) {
+     const vistaMapa = {
+      "pago": "vista-pago",
+      "dashboard": "vista-dashboard",
+      "cuenta": "vista-cuenta",
+      "egreso": "vista-egreso",
+      "extracto": "vista-extracto",
+      "hist-egresos": "vista-hist-egresos",
+      "dashboard-admin": "vista-dashboard-admin"   /////
+    };
+
+    const vistaId = vistaMapa[id];
+    if (!vistaId) {
+      mostrarMensaje("info", "Vista '" + id + "' en construcción.");
+      return;
+    }
+
+    document.getElementById("vista-menu").classList.add("oculto");
+    document.querySelectorAll("main > div").forEach(function(d) {
+      if (d.id !== vistaId) d.classList.add("oculto");
+    });
+    document.getElementById(vistaId).classList.remove("oculto");
+  ////////////////////////////////////////////////////////  paso 2.4 
+    if (id === "pago") prepararVistaPago();
+    if (id === "dashboard") prepararVistaDashboard();
+    if (id === "cuenta") prepararVistaCuenta();
+    if (id === "egreso") prepararVistaEgreso();
+    if (id === "extracto") prepararVistaExtracto();
+    if (id === "hist-egresos") prepararVistaHistoricoEgresos();
+    if (id === "dashboard-admin") prepararVistaDashboardAdmin();
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function volverAlPanel() {
+    document.querySelectorAll("main > div").forEach(function(d) {
+      d.classList.add("oculto");
+    });
+    document.getElementById("vista-menu").classList.remove("oculto");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function mostrarVista(id) {
+    document.querySelectorAll("main > div").forEach(function(d) {
+      d.classList.add("oculto");
+    });
+    const el = document.getElementById(id);
+    if (el) el.classList.remove("oculto");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function mostrarMensaje(tipo, texto) {
+    const cont = document.getElementById("toast-container");
+    const iconos = {
+      exito: "fa-circle-check",
+      error: "fa-circle-exclamation",
+      aviso: "fa-triangle-exclamation",
+      info:  "fa-circle-info"
+    };
+    const toast = document.createElement("div");
+    toast.className = "toast " + tipo;
+    toast.innerHTML = '<i class="fa-solid ' + (iconos[tipo] || iconos.info) +
+      '" style="margin-top:2px;flex-shrink:0;"></i>' +
+      '<div style="flex:1;white-space:pre-line;">' + texto + '</div>' +
+      '<i class="fa-solid fa-xmark" style="cursor:pointer;opacity:0.7;flex-shrink:0;"></i>';
+    toast.querySelector(".fa-xmark").onclick = function() { toast.remove(); };
+    cont.appendChild(toast);
+    requestAnimationFrame(function() { toast.classList.add("show"); });
+    setTimeout(function() {
+      toast.classList.remove("show");
+      setTimeout(function() { toast.remove(); }, 300);
+    }, 4000);
+  }
+
+  function formatBs(n) {
+    return (Number(n) || 0).toLocaleString("es-VE", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  }
+
+  function escapeHtml(s) {
+    return String(s || "").replace(/[&<>"']/g, function (c) {
+      return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c];
+    });
+  }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,433 @@
+<div id="vista-egreso" class="oculto fade-in max-w-2xl mx-auto">
+  <button onclick="volverAlPanel()" class="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1 mb-4">
+    <i class="fa-solid fa-arrow-left"></i> Volver al panel
+  </button>
+
+  <h2 class="text-xl font-bold mb-1">Registrar egreso</h2>
+  <p class="text-sm text-slate-500 mb-5">Sube el comprobante y la factura del gasto</p>
+
+  <div class="space-y-5">
+
+    <!-- PASO 1: VOUCHER -->
+    <div class="bg-white p-5 rounded-2xl border-2 border-red-200">
+      <label class="block text-xs font-bold text-slate-700 mb-3">
+        <span class="inline-flex items-center justify-center w-6 h-6 bg-red-600 text-white rounded-full text-xs mr-2">1</span>
+        Comprobante de pago <span class="text-red-500">*</span>
+      </label>
+
+      <div id="egr-dropzone-voucher" class="border-2 border-dashed border-red-300 rounded-xl p-6 text-center hover:bg-red-50/50 transition cursor-pointer">
+        <i class="fa-solid fa-cloud-arrow-up text-4xl text-red-500 mb-2"></i>
+        <p class="text-sm font-bold text-slate-700">Subir comprobante</p>
+        <p class="text-xs text-slate-500 mt-1">La IA lo leerá automáticamente</p>
+        <input type="file" id="egr-input-voucher" accept="image/*" class="oculto">
+        <button type="button" onclick="document.getElementById('egr-input-voucher').click()"
+          class="mt-3 px-5 py-2 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-700">
+          Seleccionar archivo
+        </button>
+      </div>
+
+      <div id="egr-procesando-voucher" class="oculto mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
+        <i class="fa-solid fa-circle-notch spin mr-2"></i>
+        Analizando comprobante con IA...
+      </div>
+
+      <div id="egr-ok-voucher" class="oculto mt-3 p-3 bg-green-50 border border-green-200 rounded-xl text-xs text-green-800 flex items-center gap-2">
+        <i class="fa-solid fa-circle-check"></i>
+        <div>
+          <div class="font-bold">Comprobante válido</div>
+          <div class="text-green-700 mt-0.5">Datos cargados correctamente</div>
+        </div>
+      </div>
+
+      <div id="egr-error-voucher" class="oculto mt-3 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-800 flex items-start gap-2">
+        <i class="fa-solid fa-circle-exclamation mt-0.5"></i>
+        <div>
+          <div class="font-bold">No se pudo leer el comprobante</div>
+          <div id="egr-error-voucher-texto" class="mt-0.5"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PASO 2: DATOS LEÍDOS -->
+    <div class="bg-white p-5 rounded-2xl border border-slate-200">
+      <label class="block text-xs font-bold text-slate-700 mb-3">
+        <span class="inline-flex items-center justify-center w-6 h-6 bg-slate-400 text-white rounded-full text-xs mr-2">2</span>
+        Datos del comprobante
+      </label>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Banco</label>
+          <input id="egr-banco" type="text" readonly placeholder="—"
+            class="w-full p-2.5 rounded-lg border border-slate-200 bg-slate-50 text-sm text-slate-700">
+        </div>
+        <div>
+          <label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Fecha</label>
+          <input id="egr-fecha" type="text" readonly placeholder="—"
+            class="w-full p-2.5 rounded-lg border border-slate-200 bg-slate-50 text-sm text-slate-700">
+        </div>
+        <div>
+          <label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Referencia</label>
+          <input id="egr-referencia" type="text" readonly placeholder="—"
+            class="w-full p-2.5 rounded-lg border border-slate-200 bg-slate-50 text-sm text-slate-700">
+        </div>
+        <div>
+          <label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Monto</label>
+          <input id="egr-monto" type="text" readonly placeholder="—"
+            class="w-full p-2.5 rounded-lg border border-slate-200 bg-slate-50 text-sm font-bold text-slate-700">
+        </div>
+      </div>
+
+      <p class="text-[10px] text-slate-400 mt-3">
+        <i class="fa-solid fa-lock mr-1"></i>
+        Los datos son leídos por la IA y no se pueden editar
+      </p>
+    </div>
+
+    <!-- PASO 3: DATOS DEL GASTO -->
+    <div class="bg-white p-5 rounded-2xl border border-slate-200">
+      <label class="block text-xs font-bold text-slate-700 mb-3">
+        <span class="inline-flex items-center justify-center w-6 h-6 bg-slate-400 text-white rounded-full text-xs mr-2">3</span>
+        Datos del gasto <span class="text-red-500">*</span>
+      </label>
+
+            <div class="space-y-3">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Categoría <span class="text-red-500">*</span></label>
+            <select id="egr-categoria" class="w-full p-2.5 rounded-lg border border-slate-300 bg-white text-sm">
+              <option value="">Cargando...</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Proveedor <span class="text-red-500">*</span></label>
+            <input id="egr-proveedor" type="text" placeholder="Ej: ABC C.A."
+              class="w-full p-2.5 rounded-lg border border-slate-300 text-sm">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Descripción <span class="text-red-500">*</span></label>
+          <textarea id="egr-descripcion" rows="2" placeholder="Ej: Limpieza mensual de áreas comunes"
+            class="w-full p-2.5 rounded-lg border border-slate-300 text-sm"></textarea>
+        </div>
+      </div>
+
+    <!-- PASO 4: FACTURA (OPCIONAL) -->
+    <div class="bg-white p-5 rounded-2xl border border-slate-200">
+      <label class="block text-xs font-bold text-slate-700 mb-3">
+        <span class="inline-flex items-center justify-center w-6 h-6 bg-slate-400 text-white rounded-full text-xs mr-2">4</span>
+        Factura del proveedor <span class="text-slate-400 font-normal">(opcional)</span>
+      </label>
+
+      <div id="egr-dropzone-factura" class="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center hover:bg-slate-50 transition cursor-pointer">
+        <i class="fa-solid fa-file-invoice text-2xl text-slate-400 mb-2"></i>
+        <p class="text-xs font-bold text-slate-600">Subir factura o recibo</p>
+        <input type="file" id="egr-input-factura" accept="image/*,application/pdf" class="oculto">
+        <button type="button" onclick="document.getElementById('egr-input-factura').click()"
+          class="mt-2 px-4 py-1.5 bg-slate-200 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-300">
+          Seleccionar archivo
+        </button>
+      </div>
+
+      <div id="egr-ok-factura" class="oculto mt-3 p-3 bg-green-50 border border-green-200 rounded-xl text-xs text-green-800 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-circle-check"></i>
+          <span class="font-bold">Factura cargada</span>
+        </div>
+        <button onclick="egrQuitarFactura()" class="text-red-600 underline text-[10px]">Quitar</button>
+      </div>
+    </div>
+
+    <!-- ALERTA RESULTADO -->
+    <div id="egr-alerta" class="oculto p-4 rounded-2xl text-sm border-2"></div>
+
+    <!-- BOTÓN ENVIAR -->
+    <button id="egr-btn-enviar" onclick="egrEnviar()" disabled
+      class="w-full py-3.5 bg-slate-300 text-slate-500 font-bold rounded-xl cursor-not-allowed transition">
+      <i class="fa-solid fa-paper-plane mr-2"></i>
+      Registrar egreso
+    </button>
+
+    <p class="text-[10px] text-slate-400 text-center">
+      El egreso se registrará como pagado y afectará el fondo operativo.
+    </p>
+  </div>
+</div>
+
+<script>
+  // ============================================================
+  // ESTADO LOCAL
+  // ============================================================
+  let egrBase64Voucher = null;
+  let egrMimeVoucher = null;
+  let egrBase64Factura = null;
+  let egrMimeFactura = null;
+  let egrDatosIA = null;
+
+  // ============================================================
+  // INICIALIZACIÓN
+  // ============================================================
+  function prepararVistaEgreso() {
+    // Resetear
+    egrBase64Voucher = null;
+    egrMimeVoucher = null;
+    egrBase64Factura = null;
+    egrMimeFactura = null;
+    egrDatosIA = null;
+
+    document.getElementById("egr-input-voucher").value = "";
+    document.getElementById("egr-input-factura").value = "";
+    document.getElementById("egr-banco").value = "";
+    document.getElementById("egr-fecha").value = "";
+    document.getElementById("egr-referencia").value = "";
+    document.getElementById("egr-monto").value = "";
+    document.getElementById("egr-categoria").value = "";
+    document.getElementById("egr-proveedor").value = "";
+    document.getElementById("egr-descripcion").value = "";
+
+    document.getElementById("egr-dropzone-voucher").classList.remove("oculto");
+    document.getElementById("egr-procesando-voucher").classList.add("oculto");
+    document.getElementById("egr-ok-voucher").classList.add("oculto");
+    document.getElementById("egr-error-voucher").classList.add("oculto");
+    document.getElementById("egr-ok-factura").classList.add("oculto");
+    document.getElementById("egr-dropzone-factura").classList.remove("oculto");
+    document.getElementById("egr-alerta").classList.add("oculto");
+
+    // Poblar categorías
+    poblarCategoriasEgreso();
+
+    // Verificar estado del botón
+    egrVerificarEstado();
+  }
+
+  function poblarCategoriasEgreso() {
+    const sel = document.getElementById("egr-categoria");
+    sel.innerHTML = '<option value="">Cargando...</option>';
+
+    if (!window.cfg || !window.cfg.condominio) {
+      sel.innerHTML = '<option value="">Error al cargar</option>';
+      return;
+    }
+
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (!res.exito) {
+          sel.innerHTML = '<option value="">Error</option>';
+          return;
+        }
+        sel.innerHTML = '<option value="">Selecciona...</option>';
+        res.data.forEach(function(c) {
+          const opt = document.createElement("option");
+          opt.value = c.id;
+          opt.textContent = c.nombre;
+          sel.appendChild(opt);
+        });
+      })
+      .withFailureHandler(function() {
+        sel.innerHTML = '<option value="">Error de conexión</option>';
+      })
+      .apiListarCategorias(window.sesion.condominioId);
+  }
+
+  // ============================================================
+  // UPLOAD VOUCHER
+  // ============================================================
+  document.addEventListener("change", function(e) {
+    if (e.target && e.target.id === "egr-input-voucher") {
+      const file = e.target.files[0];
+      if (file) egrProcesarVoucher(file);
+    }
+    if (e.target && e.target.id === "egr-input-factura") {
+      const file = e.target.files[0];
+      if (file) egrProcesarFactura(file);
+    }
+  });
+
+  function egrProcesarVoucher(file) {
+    if (file.size > 10 * 1024 * 1024) {
+      mostrarMensaje("error", "La imagen es muy grande (máx 10 MB).");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      egrBase64Voucher = ev.target.result;
+      egrMimeVoucher = file.type;
+
+      document.getElementById("egr-dropzone-voucher").classList.add("oculto");
+      document.getElementById("egr-ok-voucher").classList.add("oculto");
+      document.getElementById("egr-error-voucher").classList.add("oculto");
+      document.getElementById("egr-procesando-voucher").classList.remove("oculto");
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          document.getElementById("egr-procesando-voucher").classList.add("oculto");
+
+          if (!res.exito) {
+            document.getElementById("egr-error-voucher").classList.remove("oculto");
+            document.getElementById("egr-error-voucher-texto").textContent = res.error;
+            document.getElementById("egr-dropzone-voucher").classList.remove("oculto");
+            egrBase64Voucher = null;
+            return;
+          }
+
+          const datos = res.data;
+          egrDatosIA = datos;
+
+          document.getElementById("egr-banco").value = datos.banco || "—";
+          document.getElementById("egr-fecha").value = datos.fecha || "—";
+          document.getElementById("egr-referencia").value = datos.referencia || "—";
+          document.getElementById("egr-monto").value = "Bs " + (datos.monto || 0);
+
+          document.getElementById("egr-ok-voucher").classList.remove("oculto");
+          egrVerificarEstado();
+        })
+        .withFailureHandler(function(err) {
+          document.getElementById("egr-procesando-voucher").classList.add("oculto");
+          document.getElementById("egr-error-voucher").classList.remove("oculto");
+          document.getElementById("egr-error-voucher-texto").textContent = err.message;
+          document.getElementById("egr-dropzone-voucher").classList.remove("oculto");
+          egrBase64Voucher = null;
+        })
+        .apiProcesarComprobantePago(egrBase64Voucher, egrMimeVoucher);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // ============================================================
+  // UPLOAD FACTURA (sin IA)
+  // ============================================================
+  function egrProcesarFactura(file) {
+    if (file.size > 10 * 1024 * 1024) {
+      mostrarMensaje("error", "El archivo es muy grande (máx 10 MB).");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      egrBase64Factura = ev.target.result;
+      egrMimeFactura = file.type;
+
+      document.getElementById("egr-dropzone-factura").classList.add("oculto");
+      document.getElementById("egr-ok-factura").classList.remove("oculto");
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function egrQuitarFactura() {
+    egrBase64Factura = null;
+    egrMimeFactura = null;
+    document.getElementById("egr-input-factura").value = "";
+    document.getElementById("egr-dropzone-factura").classList.remove("oculto");
+    document.getElementById("egr-ok-factura").classList.add("oculto");
+  }
+
+  // ============================================================
+  // VERIFICAR ESTADO
+  // ============================================================
+  function egrVerificarEstado() {
+    const categoria = document.getElementById("egr-categoria").value;
+    const proveedor = document.getElementById("egr-proveedor").value.trim();
+    const descripcion = document.getElementById("egr-descripcion").value.trim();
+    const btn = document.getElementById("egr-btn-enviar");
+
+    const listo = egrDatosIA && categoria && proveedor && descripcion;
+
+    if (listo) {
+      btn.disabled = false;
+      btn.className = "w-full py-3.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition";
+    } else {
+      btn.disabled = true;
+      btn.className = "w-full py-3.5 bg-slate-300 text-slate-500 font-bold rounded-xl cursor-not-allowed transition";
+    }
+  }
+
+  document.addEventListener("input", function(e) {
+    if (e.target && ["egr-categoria", "egr-proveedor", "egr-descripcion"].indexOf(e.target.id) !== -1) {
+      egrVerificarEstado();
+    }
+  });
+  document.addEventListener("change", function(e) {
+    if (e.target && e.target.id === "egr-categoria") {
+      egrVerificarEstado();
+    }
+  });
+
+  // ============================================================
+  // ENVIAR
+  // ============================================================
+  function egrEnviar() {
+    if (!egrDatosIA) return;
+
+    const categoriaId = document.getElementById("egr-categoria").value;
+    const proveedor = document.getElementById("egr-proveedor").value.trim();
+    const descripcion = document.getElementById("egr-descripcion").value.trim();
+
+    const btn = document.getElementById("egr-btn-enviar");
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-circle-notch spin mr-2"></i> Registrando...';
+
+    const datos = {
+      condominioId: window.sesion.condominioId,
+      categoriaId: categoriaId,
+      proveedorId: null,
+      fecha: convertirFechaISOEgr(egrDatosIA.fecha),
+      descripcion: descripcion,
+      monto: parseFloat(egrDatosIA.monto),
+      moneda: "BS",
+      referencia: egrDatosIA.referencia,
+      banco: egrDatosIA.banco
+    };
+
+    google.script.run
+      .withSuccessHandler(function(res) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-paper-plane mr-2"></i> Registrar egreso';
+
+        if (!res.exito) {
+          document.getElementById("egr-alerta").classList.remove("oculto");
+          document.getElementById("egr-alerta").className = "p-4 rounded-2xl text-sm border-2 bg-red-50 border-red-300 text-red-800";
+          document.getElementById("egr-alerta").innerHTML =
+            '<div class="flex items-start gap-3">' +
+            '<i class="fa-solid fa-circle-exclamation text-2xl text-red-600 mt-0.5"></i>' +
+            '<div><p class="font-bold">Error al registrar</p><p class="mt-1">' + res.error + '</p></div>' +
+            '</div>';
+          return;
+        }
+
+        document.getElementById("egr-alerta").classList.remove("oculto");
+        document.getElementById("egr-alerta").className = "p-4 rounded-2xl text-sm border-2 bg-green-50 border-green-300 text-green-800";
+        document.getElementById("egr-alerta").innerHTML =
+          '<div class="flex items-start gap-3">' +
+          '<i class="fa-solid fa-circle-check text-2xl text-green-600 mt-0.5"></i>' +
+          '<div><p class="font-bold">¡Egreso registrado!</p>' +
+          '<p class="mt-1 text-green-700">Se descontó del fondo operativo. Comprobante y factura guardados.</p></div>' +
+          '</div>';
+
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      })
+      .withFailureHandler(function(err) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-paper-plane mr-2"></i> Registrar egreso';
+        mostrarMensaje("error", "Error: " + err.message);
+      })
+      .apiRegistrarEgresoOperativoConComprobante(
+        datos,
+        egrBase64Voucher,
+        egrMimeVoucher,
+        egrBase64Factura,
+        egrMimeFactura
+      );
+  }
+
+  // ============================================================
+  // UTILIDAD
+  // ============================================================
+  function convertirFechaISOEgr(fechaDDMMYYYY) {
+    if (!fechaDDMMYYYY) return new Date().toISOString().substring(0, 10);
+    const partes = String(fechaDDMMYYYY).split("/");
+    if (partes.length !== 3) return new Date().toISOString().substring(0, 10);
+    return partes[2] + "-" + partes[1].padStart(2, "0") + "-" + partes[0].padStart(2, "0");
+  }
+</script>

@@ -1,0 +1,146 @@
+<div id="vista-dashboard-admin" class="oculto fade-in max-w-2xl mx-auto">
+  <button onclick="volverAlPanel()" class="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1 mb-4">
+    <i class="fa-solid fa-arrow-left"></i> Volver al panel
+  </button>
+
+  <div id="dadm-loading" class="text-center py-12">
+    <i class="fa-solid fa-circle-notch spin text-3xl text-blue-600 mb-3"></i>
+    <p class="text-slate-500 text-sm">Cargando panel...</p>
+  </div>
+
+  <div id="dadm-contenido" class="oculto space-y-5"></div>
+</div>
+
+<script>
+  function prepararVistaDashboardAdmin() {
+    document.getElementById("dadm-loading").classList.remove("oculto");
+    document.getElementById("dadm-contenido").classList.add("oculto");
+    document.getElementById("dadm-contenido").innerHTML = "";
+
+    const condId = window.sesion.condominioId;
+    if (!condId) {
+      document.getElementById("dadm-loading").classList.add("oculto");
+      document.getElementById("dadm-contenido").classList.remove("oculto");
+      document.getElementById("dadm-contenido").innerHTML =
+        '<div class="text-red-600 text-center py-8">Sin condominio asignado.</div>';
+      return;
+    }
+
+    google.script.run
+      .withSuccessHandler(function(res) {
+        document.getElementById("dadm-loading").classList.add("oculto");
+        document.getElementById("dadm-contenido").classList.remove("oculto");
+        if (!res.exito) {
+          document.getElementById("dadm-contenido").innerHTML =
+            '<div class="text-red-600 text-center py-8">Error: ' + res.error + '</div>';
+          return;
+        }
+        renderDashboardAdmin(res.data);
+      })
+      .withFailureHandler(function(err) {
+        document.getElementById("dadm-loading").classList.add("oculto");
+        document.getElementById("dadm-contenido").classList.remove("oculto");
+        document.getElementById("dadm-contenido").innerHTML =
+          '<div class="text-red-600 text-center py-8">Error: ' + err.message + '</div>';
+      })
+      .apiDashboardAdmin(condId);
+  }
+
+  function renderDashboardAdmin(d) {
+    let html = "";
+
+    html += `
+      <div>
+        <p class="text-xs text-slate-500 uppercase font-bold">Panel de administración</p>
+        <h2 class="text-lg font-bold">Resumen del condominio</h2>
+      </div>
+    `;
+
+    const balanceColor = d.periodoActual.balance >= 0 ? "text-green-600" : "text-red-600";
+
+    html += `
+      <div class="grid grid-cols-2 gap-3">
+        <div class="bg-white p-4 rounded-2xl border border-slate-200">
+          <p class="text-[10px] text-slate-500 uppercase font-bold">Ingresos ${d.periodo}</p>
+          <p class="text-lg font-bold text-green-600 mt-1">Bs ${formatBs(d.periodoActual.ingresos)}</p>
+        </div>
+        <div class="bg-white p-4 rounded-2xl border border-slate-200">
+          <p class="text-[10px] text-slate-500 uppercase font-bold">Egresos ${d.periodo}</p>
+          <p class="text-lg font-bold text-red-600 mt-1">Bs ${formatBs(d.periodoActual.egresos)}</p>
+        </div>
+        <div class="bg-white p-4 rounded-2xl border border-slate-200">
+          <p class="text-[10px] text-slate-500 uppercase font-bold">Balance</p>
+          <p class="text-lg font-bold ${balanceColor} mt-1">Bs ${formatBs(d.periodoActual.balance)}</p>
+        </div>
+        <div class="bg-white p-4 rounded-2xl border border-slate-200">
+          <p class="text-[10px] text-slate-500 uppercase font-bold">Deuda total</p>
+          <p class="text-lg font-bold ${d.totales.deudaTotal > 0 ? "text-amber-600" : "text-slate-400"} mt-1">Bs ${formatBs(d.totales.deudaTotal)}</p>
+        </div>
+      </div>
+    `;
+
+    html += `
+      <div class="bg-white p-4 rounded-2xl border border-slate-200">
+        <p class="text-[10px] uppercase font-bold text-slate-600 mb-3">
+          <i class="fa-solid fa-vault mr-1"></i> Fondos
+        </p>
+        <div class="flex justify-between py-2 border-b border-slate-100">
+          <span class="text-xs text-slate-500">Operativo</span>
+          <span class="font-bold text-sm">Bs ${formatBs(d.fondos.operativo)}</span>
+        </div>
+        <div class="flex justify-between py-2">
+          <span class="text-xs text-slate-500">Reserva</span>
+          <span class="font-bold text-sm text-indigo-700">Bs ${formatBs(d.fondos.reservaBs)}</span>
+        </div>
+      </div>
+    `;
+
+    html += `
+      <div class="bg-white p-4 rounded-2xl border border-slate-200">
+        <p class="text-[10px] uppercase font-bold text-slate-600 mb-3">
+          <i class="fa-solid fa-users mr-1"></i> Propietarios
+        </p>
+        <div class="flex gap-3">
+          <div class="flex-1 bg-green-50 p-3 rounded-xl border border-green-200">
+            <div class="text-xs font-bold text-green-700">${d.propietarios.alDia} al día</div>
+          </div>
+          <div class="flex-1 bg-red-50 p-3 rounded-xl border border-red-200">
+            <div class="text-xs font-bold text-red-700">${d.propietarios.enMora} en mora</div>
+          </div>
+        </div>
+        <p class="text-[10px] text-slate-400 text-center mt-3">Total: ${d.propietarios.total}</p>
+      </div>
+    `;
+
+    if (d.topDeudores && d.topDeudores.length) {
+      html += `
+        <div class="bg-white p-4 rounded-2xl border border-amber-200">
+          <p class="text-[10px] uppercase font-bold text-amber-800 mb-3">
+            <i class="fa-solid fa-user-clock mr-1"></i> Top deudores
+          </p>
+          <div class="divide-y divide-slate-100">
+            ${d.topDeudores.map(x => `
+              <div class="py-2.5 flex justify-between items-center text-xs">
+                <div>
+                  <div class="font-semibold">${escapeHtml(x.codigo)}</div>
+                  <div class="text-slate-400 text-[10px]">${escapeHtml(x.edificio || "")}</div>
+                </div>
+                <div class="font-bold text-red-600">Bs ${formatBs(x.deuda)}</div>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+      `;
+    }
+
+    html += `
+      <div class="grid grid-cols-1 gap-3">
+        <button onclick="irA('egreso')" class="py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl">
+          <i class="fa-solid fa-file-invoice-dollar mr-2"></i> Registrar egreso
+        </button>
+      </div>
+    `;
+
+    document.getElementById("dadm-contenido").innerHTML = html;
+  }
+</script>

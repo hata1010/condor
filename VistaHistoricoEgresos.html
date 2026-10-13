@@ -1,0 +1,143 @@
+<div id="vista-hist-egresos" class="oculto fade-in max-w-2xl mx-auto">
+  <button onclick="volverAlPanel()" class="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1 mb-4">
+    <i class="fa-solid fa-arrow-left"></i> Volver al panel
+  </button>
+
+  <h2 class="text-xl font-bold mb-1">Histórico de egresos</h2>
+  <p class="text-sm text-slate-500 mb-5">Todos los gastos del condominio</p>
+
+  <div id="hegresos-loading" class="text-center py-12">
+    <i class="fa-solid fa-circle-notch spin text-3xl text-amber-600 mb-3"></i>
+    <p class="text-slate-500 text-sm">Cargando...</p>
+  </div>
+
+  <div id="hegresos-contenido" class="oculto space-y-4"></div>
+</div>
+
+<script>
+  function prepararVistaHistoricoEgresos() {
+    document.getElementById("hegresos-loading").classList.remove("oculto");
+    document.getElementById("hegresos-contenido").classList.add("oculto");
+    document.getElementById("hegresos-contenido").innerHTML = "";
+
+    const condId = window.sesion.condominioId;
+    if (!condId) {
+      document.getElementById("hegresos-loading").classList.add("oculto");
+      return;
+    }
+
+    google.script.run
+      .withSuccessHandler(function(res) {
+        document.getElementById("hegresos-loading").classList.add("oculto");
+        document.getElementById("hegresos-contenido").classList.remove("oculto");
+        if (!res.exito) {
+          document.getElementById("hegresos-contenido").innerHTML =
+            '<div class="text-red-600 text-center py-8">Error: ' + res.error + '</div>';
+          return;
+        }
+        renderHistoricoEgresos(res.data);
+      })
+      .withFailureHandler(function(err) {
+        document.getElementById("hegresos-loading").classList.add("oculto");
+        document.getElementById("hegresos-contenido").classList.remove("oculto");
+        document.getElementById("hegresos-contenido").innerHTML =
+          '<div class="text-red-600 text-center py-8">Error: ' + err.message + '</div>';
+      })
+      .apiListarEgresos(condId, {});
+  }
+
+  function renderHistoricoEgresos(egresos) {
+    if (!egresos.length) {
+      document.getElementById("hegresos-contenido").innerHTML = `
+        <div class="bg-white p-6 rounded-2xl border border-dashed border-slate-300 text-center">
+          <i class="fa-solid fa-inbox text-3xl text-slate-300 mb-2"></i>
+          <p class="text-sm text-slate-500">No hay egresos registrados</p>
+        </div>
+      `;
+      return;
+    }
+
+    // Totales
+    const totalEgresos = egresos.reduce((s, e) => s + e.monto, 0);
+    const porCategoria = {};
+    egresos.forEach(e => {
+      const cat = e.categoria || "Sin categoría";
+      if (!porCategoria[cat]) porCategoria[cat] = { monto: 0, cantidad: 0 };
+      porCategoria[cat].monto += e.monto;
+      porCategoria[cat].cantidad++;
+    });
+
+    let html = "";
+
+    // Resumen
+    html += `
+      <div class="bg-white p-4 rounded-2xl border border-slate-200">
+        <p class="text-[10px] uppercase font-bold text-slate-600 mb-1">Total egresos</p>
+        <p class="text-2xl font-bold text-red-600">Bs ${formatBs(totalEgresos)}</p>
+        <p class="text-[10px] text-slate-400 mt-1">${egresos.length} movimiento(s)</p>
+      </div>
+    `;
+
+    // Por categoría
+    const cats = Object.keys(porCategoria).sort((a, b) => porCategoria[b].monto - porCategoria[a].monto);
+    html += `
+      <div class="bg-white p-4 rounded-2xl border border-slate-200">
+        <p class="text-[10px] uppercase font-bold text-slate-600 mb-3">
+          <i class="fa-solid fa-chart-pie mr-1"></i> Por categoría
+        </p>
+        <div class="space-y-2">
+          ${cats.map(c => `
+            <div class="flex justify-between items-center text-xs">
+              <div class="flex items-center gap-2">
+                <span class="font-semibold">${escapeHtml(c)}</span>
+                <span class="text-[10px] text-slate-400">(${porCategoria[c].cantidad})</span>
+              </div>
+              <span class="font-bold text-red-600">Bs ${formatBs(porCategoria[c].monto)}</span>
+            </div>
+          `).join("")}
+        </div>
+      </div>
+    `;
+
+    // Lista de egresos
+    html += `
+      <div>
+        <p class="text-xs uppercase font-bold text-slate-500 mb-2">Movimientos</p>
+        <div class="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100">
+          ${egresos.map(e => {
+            const estados = {
+              PAGADO: { color: "text-green-600", texto: "Pagado" },
+              BORRADOR: { color: "text-slate-500", texto: "Borrador" },
+              APROBADO: { color: "text-blue-600", texto: "Aprobado" },
+              EN_ASAMBLEA: { color: "text-purple-600", texto: "En asamblea" },
+              EN_EJECUCION: { color: "text-amber-600", texto: "En ejecución" },
+              VALIDADO: { color: "text-indigo-600", texto: "Validado" },
+              CUBIERTO: { color: "text-green-700", texto: "Cubierto" },
+              ANULADO: { color: "text-red-500", texto: "Anulado" }
+            };
+            const est = estados[e.estado] || estados.BORRADOR;
+            return `
+              <div class="p-4 flex items-center gap-3">
+                <div class="w-9 h-9 bg-red-50 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <i class="fa-solid fa-file-invoice-dollar text-red-600"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-semibold truncate">${escapeHtml(e.descripcion)}</p>
+                  <p class="text-[10px] text-slate-400 truncate">
+                    ${escapeHtml(e.fecha || "")} · ${escapeHtml(e.categoria || "—")}
+                  </p>
+                </div>
+                <div class="text-right flex-shrink-0">
+                  <p class="font-bold text-red-600 text-sm">- Bs ${formatBs(e.monto)}</p>
+                  <p class="text-[10px] ${est.color} font-bold uppercase">${est.texto}</p>
+                </div>
+              </div>
+            `;
+          }).join("")}
+        </div>
+      </div>
+    `;
+
+    document.getElementById("hegresos-contenido").innerHTML = html;
+  }
+</script>

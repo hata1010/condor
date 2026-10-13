@@ -1,0 +1,364 @@
+<div id="vista-pago" class="oculto fade-in max-w-2xl mx-auto">
+  <button onclick="volverAlPanel()" class="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1 mb-4">
+    <i class="fa-solid fa-arrow-left"></i> Volver al panel
+  </button>
+
+  <h2 class="text-xl font-bold mb-1">Reportar pago de cuota</h2>
+  <p class="text-sm text-slate-500 mb-5">Sube tu comprobante y confirma el período</p>
+
+  <div class="space-y-5">
+
+    <!-- PASO 1: COMPROBANTE -->
+    <div class="bg-white p-5 rounded-2xl border-2 border-blue-200">
+      <label class="block text-xs font-bold text-slate-700 mb-3">
+        <span class="inline-flex items-center justify-center w-6 h-6 bg-blue-600 text-white rounded-full text-xs mr-2">1</span>
+        Comprobante bancario <span class="text-red-500">*</span>
+      </label>
+
+      <div id="pago-dropzone" class="border-2 border-dashed border-blue-300 rounded-xl p-6 text-center hover:bg-blue-50/50 transition cursor-pointer">
+        <i class="fa-solid fa-cloud-arrow-up text-4xl text-blue-500 mb-2"></i>
+        <p class="text-sm font-bold text-slate-700">Subir comprobante</p>
+        <p class="text-xs text-slate-500 mt-1">La IA lo leerá automáticamente</p>
+        <input type="file" id="pago-input-file" accept="image/*" class="oculto">
+        <button type="button" onclick="document.getElementById('pago-input-file').click()"
+          class="mt-3 px-5 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700">
+          Seleccionar archivo
+        </button>
+      </div>
+
+      <div id="pago-procesando" class="oculto mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
+        <i class="fa-solid fa-circle-notch spin mr-2"></i>
+        Analizando comprobante con IA...
+      </div>
+
+      <div id="pago-leido-ok" class="oculto mt-3 p-3 bg-green-50 border border-green-200 rounded-xl text-xs text-green-800 flex items-center gap-2">
+        <i class="fa-solid fa-circle-check"></i>
+        <div>
+          <div class="font-bold">Comprobante válido detectado</div>
+          <div class="text-green-700 mt-0.5">Datos cargados correctamente</div>
+        </div>
+      </div>
+
+      <div id="pago-leido-error" class="oculto mt-3 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-800 flex items-start gap-2">
+        <i class="fa-solid fa-circle-exclamation mt-0.5"></i>
+        <div>
+          <div class="font-bold">No se pudo leer el comprobante</div>
+          <div id="pago-error-texto" class="mt-0.5"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PASO 2: DATOS LEÍDOS -->
+    <div class="bg-white p-5 rounded-2xl border border-slate-200">
+      <label class="block text-xs font-bold text-slate-700 mb-3">
+        <span class="inline-flex items-center justify-center w-6 h-6 bg-slate-400 text-white rounded-full text-xs mr-2">2</span>
+        Datos leídos por la IA
+      </label>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Banco</label>
+          <input id="pago-banco" type="text" readonly placeholder="—"
+            class="w-full p-2.5 rounded-lg border border-slate-200 bg-slate-50 text-sm text-slate-700">
+        </div>
+        <div>
+          <label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Fecha</label>
+          <input id="pago-fecha" type="text" readonly placeholder="—"
+            class="w-full p-2.5 rounded-lg border border-slate-200 bg-slate-50 text-sm text-slate-700">
+        </div>
+        <div>
+          <label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Referencia</label>
+          <input id="pago-referencia" type="text" readonly placeholder="—"
+            class="w-full p-2.5 rounded-lg border border-slate-200 bg-slate-50 text-sm text-slate-700">
+        </div>
+        <div>
+          <label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Monto</label>
+          <input id="pago-monto" type="text" readonly placeholder="—"
+            class="w-full p-2.5 rounded-lg border border-slate-200 bg-slate-50 text-sm font-bold text-slate-700">
+        </div>
+      </div>
+
+      <p class="text-[10px] text-slate-400 mt-3">
+        <i class="fa-solid fa-lock mr-1"></i>
+        Los datos son leídos por la IA y no se pueden editar
+      </p>
+    </div>
+
+    <!-- PASO 3: PERÍODO -->
+    <div class="bg-white p-5 rounded-2xl border border-slate-200">
+      <label class="block text-xs font-bold text-slate-700 mb-3">
+        <span class="inline-flex items-center justify-center w-6 h-6 bg-slate-400 text-white rounded-full text-xs mr-2">3</span>
+        ¿A qué período corresponde? <span class="text-red-500">*</span>
+      </label>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Año</label>
+          <select id="pago-anio" class="w-full p-2.5 rounded-lg border border-slate-300 bg-white text-sm">
+            <option value="">—</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Mes</label>
+          <select id="pago-mes" class="w-full p-2.5 rounded-lg border border-slate-300 bg-white text-sm">
+            <option value="">Selecciona...</option>
+            <option>Enero</option>
+            <option>Febrero</option>
+            <option>Marzo</option>
+            <option>Abril</option>
+            <option>Mayo</option>
+            <option>Junio</option>
+            <option>Julio</option>
+            <option>Agosto</option>
+            <option>Septiembre</option>
+            <option>Octubre</option>
+            <option>Noviembre</option>
+            <option>Diciembre</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="pago-preview-periodo" class="oculto mt-3 p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs">
+        <span class="text-blue-700">Se aplicará a: </span>
+        <span id="pago-preview-texto" class="font-bold text-blue-900"></span>
+      </div>
+    </div>
+
+    <!-- ALERTA RESULTADO -->
+    <div id="pago-alerta" class="oculto p-4 rounded-2xl text-sm border-2"></div>
+
+    <!-- BOTÓN ENVIAR -->
+    <button id="pago-btn-enviar" onclick="pagoEnviar()" disabled
+      class="w-full py-3.5 bg-slate-300 text-slate-500 font-bold rounded-xl cursor-not-allowed transition">
+      <i class="fa-solid fa-paper-plane mr-2"></i>
+      Reportar pago
+    </button>
+
+    <p class="text-[10px] text-slate-400 text-center">
+      Al reportar el pago, se enviará a la administración para su verificación.
+    </p>
+  </div>
+</div>
+
+<script>
+  // ============================================================
+  // ESTADO LOCAL DE LA VISTA
+  // ============================================================
+  let pagoBase64 = null;
+  let pagoMimeType = null;
+  let pagoDatosIA = null;
+
+  // ============================================================
+  // INICIALIZACIÓN AL ENTRAR A LA VISTA
+  // ============================================================
+  function prepararVistaPago() {
+    // Resetear
+    pagoBase64 = null;
+    pagoMimeType = null;
+    pagoDatosIA = null;
+
+    document.getElementById("pago-input-file").value = "";
+    document.getElementById("pago-banco").value = "";
+    document.getElementById("pago-fecha").value = "";
+    document.getElementById("pago-referencia").value = "";
+    document.getElementById("pago-monto").value = "";
+    document.getElementById("pago-mes").value = "";
+    document.getElementById("pago-preview-periodo").classList.add("oculto");
+    document.getElementById("pago-alerta").classList.add("oculto");
+    document.getElementById("pago-procesando").classList.add("oculto");
+    document.getElementById("pago-leido-ok").classList.add("oculto");
+    document.getElementById("pago-leido-error").classList.add("oculto");
+    document.getElementById("pago-dropzone").classList.remove("oculto");
+
+    // Poblar año (actual + 2 siguientes)
+    const selAnio = document.getElementById("pago-anio");
+    selAnio.innerHTML = '<option value="">—</option>';
+    const anioActual = new Date().getFullYear();
+    for (let a = anioActual; a <= anioActual + 2; a++) {
+      const opt = document.createElement("option");
+      opt.value = a;
+      opt.textContent = a;
+      selAnio.appendChild(opt);
+    }
+    selAnio.value = anioActual;
+
+    // Actualizar estado del botón
+    verificarEstadoPago();
+  }
+
+  // ============================================================
+  // UPLOAD Y LECTURA CON IA
+  // ============================================================
+  document.addEventListener("change", function(e) {
+    if (e.target && e.target.id === "pago-input-file") {
+      const file = e.target.files[0];
+      if (!file) return;
+      procesarArchivoPago(file);
+    }
+  });
+
+  function procesarArchivoPago(file) {
+    // Validar tamaño (max 10 MB)
+    if (file.size > 10 * 1024 * 1024) {
+      mostrarMensaje("error", "La imagen es muy grande (máx 10 MB).");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      pagoBase64 = ev.target.result;
+      pagoMimeType = file.type;
+
+      // Mostrar estado procesando
+      document.getElementById("pago-dropzone").classList.add("oculto");
+      document.getElementById("pago-leido-ok").classList.add("oculto");
+      document.getElementById("pago-leido-error").classList.add("oculto");
+      document.getElementById("pago-procesando").classList.remove("oculto");
+
+      // Llamar a la IA
+      google.script.run
+        .withSuccessHandler(function(res) {
+          document.getElementById("pago-procesando").classList.add("oculto");
+
+          if (!res.exito) {
+            document.getElementById("pago-leido-error").classList.remove("oculto");
+            document.getElementById("pago-error-texto").textContent = res.error;
+            document.getElementById("pago-dropzone").classList.remove("oculto");
+            pagoBase64 = null;
+            return;
+          }
+
+          const datos = res.data;
+          pagoDatosIA = datos;
+
+          // Rellenar campos
+          document.getElementById("pago-banco").value = datos.banco || "—";
+          document.getElementById("pago-fecha").value = datos.fecha || "—";
+          document.getElementById("pago-referencia").value = datos.referencia || "—";
+          document.getElementById("pago-monto").value = "Bs " + (datos.monto || 0);
+
+          document.getElementById("pago-leido-ok").classList.remove("oculto");
+          verificarEstadoPago();
+        })
+        .withFailureHandler(function(err) {
+          document.getElementById("pago-procesando").classList.add("oculto");
+          document.getElementById("pago-leido-error").classList.remove("oculto");
+          document.getElementById("pago-error-texto").textContent = err.message;
+          document.getElementById("pago-dropzone").classList.remove("oculto");
+          pagoBase64 = null;
+        })
+        .apiProcesarComprobantePago(pagoBase64, pagoMimeType);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // ============================================================
+  // PREVIEW DEL PERÍODO
+  // ============================================================
+  document.addEventListener("change", function(e) {
+    if (e.target && (e.target.id === "pago-mes" || e.target.id === "pago-anio")) {
+      const mes = document.getElementById("pago-mes").value;
+      const anio = document.getElementById("pago-anio").value;
+      const preview = document.getElementById("pago-preview-periodo");
+      const texto = document.getElementById("pago-preview-texto");
+
+      if (mes && anio) {
+        preview.classList.remove("oculto");
+        texto.textContent = mes + " " + anio;
+      } else {
+        preview.classList.add("oculto");
+      }
+      verificarEstadoPago();
+    }
+  });
+
+  // ============================================================
+  // VERIFICAR SI ESTÁ LISTO PARA ENVIAR
+  // ============================================================
+  function verificarEstadoPago() {
+    const mes = document.getElementById("pago-mes").value;
+    const anio = document.getElementById("pago-anio").value;
+    const btn = document.getElementById("pago-btn-enviar");
+
+    const listo = pagoDatosIA && mes && anio;
+
+    if (listo) {
+      btn.disabled = false;
+      btn.className = "w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition";
+    } else {
+      btn.disabled = true;
+      btn.className = "w-full py-3.5 bg-slate-300 text-slate-500 font-bold rounded-xl cursor-not-allowed transition";
+    }
+  }
+
+  // ============================================================
+  // ENVIAR AL BACKEND
+  // ============================================================
+  function pagoEnviar() {
+    if (!pagoDatosIA) return;
+
+    const mes = document.getElementById("pago-mes").value;
+    const anio = parseInt(document.getElementById("pago-anio").value);
+
+    const btn = document.getElementById("pago-btn-enviar");
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-circle-notch spin mr-2"></i> Subiendo...';
+
+    const datos = {
+      condominioId: window.sesion.condominioId,
+      inmuebleId: window.sesion.inmuebleId,
+      personaId: window.sesion.personaId || null,
+      fechaPago: convertirFechaISO(pagoDatosIA.fecha),
+      monto: parseFloat(pagoDatosIA.monto),
+      moneda: "BS",
+      referencia: pagoDatosIA.referencia,
+      banco: pagoDatosIA.banco,
+      mes: mes,
+      anio: anio
+    };
+
+    google.script.run
+      .withSuccessHandler(function(res) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-paper-plane mr-2"></i> Reportar pago';
+
+        if (!res.exito) {
+          document.getElementById("pago-alerta").classList.remove("oculto");
+          document.getElementById("pago-alerta").className = "p-4 rounded-2xl text-sm border-2 bg-red-50 border-red-300 text-red-800";
+          document.getElementById("pago-alerta").innerHTML =
+            '<div class="flex items-start gap-3">' +
+            '<i class="fa-solid fa-circle-exclamation text-2xl text-red-600 mt-0.5"></i>' +
+            '<div><p class="font-bold">Error al registrar</p><p class="mt-1">' + res.error + '</p></div>' +
+            '</div>';
+          return;
+        }
+
+        document.getElementById("pago-alerta").classList.remove("oculto");
+        document.getElementById("pago-alerta").className = "p-4 rounded-2xl text-sm border-2 bg-green-50 border-green-300 text-green-800";
+        document.getElementById("pago-alerta").innerHTML =
+          '<div class="flex items-start gap-3">' +
+          '<i class="fa-solid fa-circle-check text-2xl text-green-600 mt-0.5"></i>' +
+          '<div><p class="font-bold">¡Pago reportado correctamente!</p>' +
+          '<p class="mt-1 text-green-700">Comprobante guardado. Se envió a la administración para su verificación.</p></div>' +
+          '</div>';
+
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      })
+      .withFailureHandler(function(err) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-paper-plane mr-2"></i> Reportar pago';
+        mostrarMensaje("error", "Error: " + err.message);
+      })
+      .apiRegistrarPagoConComprobante(datos, pagoBase64, pagoMimeType);
+  }
+
+  // ============================================================
+  // UTILIDAD: convertir DD/MM/AAAA a AAAA-MM-DD
+  // ============================================================
+  function convertirFechaISO(fechaDDMMYYYY) {
+    if (!fechaDDMMYYYY) return new Date().toISOString().substring(0, 10);
+    const partes = String(fechaDDMMYYYY).split("/");
+    if (partes.length !== 3) return new Date().toISOString().substring(0, 10);
+    return partes[2] + "-" + partes[1].padStart(2, "0") + "-" + partes[0].padStart(2, "0");
+  }
+</script>

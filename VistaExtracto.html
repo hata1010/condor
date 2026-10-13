@@ -1,0 +1,226 @@
+<div id="vista-extracto" class="oculto fade-in max-w-2xl mx-auto">
+  <button onclick="volverAlPanel()" class="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1 mb-4">
+    <i class="fa-solid fa-arrow-left"></i> Volver al panel
+  </button>
+
+  <h2 class="text-xl font-bold mb-1">Cargar extracto bancario</h2>
+  <p class="text-sm text-slate-500 mb-5">Pega el contenido del banco y el sistema conciliará automáticamente</p>
+
+  <div class="space-y-5">
+
+    <!-- PASO 1: PEGAR -->
+    <div class="bg-white p-5 rounded-2xl border-2 border-indigo-200">
+      <label class="block text-xs font-bold text-slate-700 mb-3">
+        <span class="inline-flex items-center justify-center w-6 h-6 bg-indigo-600 text-white rounded-full text-xs mr-2">1</span>
+        Pega el extracto del banco <span class="text-red-500">*</span>
+      </label>
+
+      <div class="p-3 bg-indigo-50 border border-indigo-200 rounded-xl text-xs text-indigo-800 mb-3">
+        <strong>Formato:</strong> Fecha · Referencia · Descripción · Monto · Balance
+        <br>Separados por <b>tabulaciones</b> (pegar directo del banco).
+      </div>
+
+      <textarea id="ext-texto" rows="10"
+        placeholder="2026-09-22	3701123819157	Pago Móvil Condominio	7.000,00	28.000,00&#10;2026-09-22	3701123876466	Pago Móvil Condominio	7.000,00	35.000,00"
+        class="w-full p-3 rounded-xl border border-slate-300 text-xs font-mono"></textarea>
+
+      <div class="flex gap-2 mt-3">
+        <button onclick="extCargar()" id="ext-btn-cargar"
+          class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-sm">
+          <i class="fa-solid fa-upload mr-2"></i> Cargar al sistema
+        </button>
+        <button onclick="document.getElementById('ext-texto').value=''"
+          class="px-4 py-2.5 bg-slate-200 hover:bg-slate-300 rounded-xl text-xs font-bold">
+          Limpiar
+        </button>
+      </div>
+    </div>
+
+    <!-- RESULTADO DE LA CARGA -->
+    <div id="ext-resultado-carga" class="oculto"></div>
+
+    <!-- PASO 2: CONCILIAR -->
+    <div id="ext-seccion-conciliar" class="oculto bg-white p-5 rounded-2xl border-2 border-green-200">
+      <label class="block text-xs font-bold text-slate-700 mb-3">
+        <span class="inline-flex items-center justify-center w-6 h-6 bg-green-600 text-white rounded-full text-xs mr-2">2</span>
+        Conciliar con los pagos registrados
+      </label>
+
+      <p class="text-xs text-slate-500 mb-3">
+        El sistema buscará coincidencias por referencia entre el banco y los pagos reportados.
+      </p>
+
+      <button onclick="extConciliar()" id="ext-btn-conciliar"
+        class="w-full py-2.5 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl text-sm">
+        <i class="fa-solid fa-balance-scale mr-2"></i> Conciliar ahora
+      </button>
+    </div>
+
+    <!-- RESULTADO DE LA CONCILIACIÓN -->
+    <div id="ext-resultado-conciliacion" class="oculto"></div>
+
+  </div>
+</div>
+
+<script>
+  // ============================================================
+  // CARGAR EXTRACTO
+  // ============================================================
+  function prepararVistaExtracto() {
+    document.getElementById("ext-texto").value = "";
+    document.getElementById("ext-resultado-carga").classList.add("oculto");
+    document.getElementById("ext-seccion-conciliar").classList.add("oculto");
+    document.getElementById("ext-resultado-conciliacion").classList.add("oculto");
+  }
+
+  function extCargar() {
+    const texto = document.getElementById("ext-texto").value.trim();
+    if (!texto) {
+      mostrarMensaje("aviso", "Pega primero el extracto del banco.");
+      return;
+    }
+
+    const btn = document.getElementById("ext-btn-cargar");
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-circle-notch spin mr-2"></i> Procesando...';
+
+    google.script.run
+      .withSuccessHandler(function(res) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-upload mr-2"></i> Cargar al sistema';
+
+        if (!res.exito) {
+          mostrarMensaje("error", res.error);
+          return;
+        }
+
+        // Mostrar resumen de la carga
+        const r = res.data;
+        document.getElementById("ext-resultado-carga").classList.remove("oculto");
+        document.getElementById("ext-resultado-carga").innerHTML = `
+          <div class="bg-white p-5 rounded-2xl border border-slate-200">
+            <p class="text-xs font-bold text-slate-700 mb-3">
+              <i class="fa-solid fa-file-import mr-2 text-indigo-600"></i>Resultado de la carga
+            </p>
+            <div class="grid grid-cols-3 gap-2">
+              <div class="bg-green-50 p-3 rounded-xl text-center">
+                <div class="text-2xl font-bold text-green-700">${r.nuevas}</div>
+                <div class="text-[10px] text-green-600 uppercase font-bold mt-1">Nuevos</div>
+              </div>
+              <div class="bg-amber-50 p-3 rounded-xl text-center">
+                <div class="text-2xl font-bold text-amber-700">${r.duplicadas}</div>
+                <div class="text-[10px] text-amber-600 uppercase font-bold mt-1">Duplicados</div>
+              </div>
+              <div class="bg-red-50 p-3 rounded-xl text-center">
+                <div class="text-2xl font-bold text-red-700">${r.errores}</div>
+                <div class="text-[10px] text-red-600 uppercase font-bold mt-1">Errores</div>
+              </div>
+            </div>
+            ${r.erroresDetalle && r.erroresDetalle.length ? `
+              <div class="mt-3 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700">
+                <b>Primeros errores:</b><br>${r.erroresDetalle.join("<br>")}
+              </div>
+            ` : ''}
+          </div>
+        `;
+
+        // Mostrar sección de conciliar
+        if (r.nuevas > 0) {
+          document.getElementById("ext-seccion-conciliar").classList.remove("oculto");
+        }
+
+        mostrarMensaje("exito", res.data.mensaje);
+      })
+      .withFailureHandler(function(err) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-upload mr-2"></i> Cargar al sistema';
+        mostrarMensaje("error", "Error: " + err.message);
+      })
+      .apiCargarExtracto(window.sesion.condominioId, texto, "Banesco");
+  }
+
+  // ============================================================
+  // CONCILIAR
+  // ============================================================
+  function extConciliar() {
+    const btn = document.getElementById("ext-btn-conciliar");
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-circle-notch spin mr-2"></i> Conciliando...';
+
+    google.script.run
+      .withSuccessHandler(function(res) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-balance-scale mr-2"></i> Conciliar ahora';
+
+        if (!res.exito) {
+          mostrarMensaje("error", res.error);
+          return;
+        }
+
+        renderResultadoConciliacion(res.data.resumen);
+        mostrarMensaje("exito", res.data.mensaje);
+      })
+      .withFailureHandler(function(err) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-balance-scale mr-2"></i> Conciliar ahora';
+        mostrarMensaje("error", "Error: " + err.message);
+      })
+      .apiConciliarAutomaticamente(window.sesion.condominioId);
+  }
+
+  function renderResultadoConciliacion(r) {
+    let html = `
+      <div class="bg-white p-5 rounded-2xl border border-slate-200">
+        <p class="text-xs font-bold text-slate-700 mb-3">
+          <i class="fa-solid fa-list-check mr-2 text-green-600"></i>Resultado de la conciliación
+        </p>
+        <div class="grid grid-cols-3 gap-2 mb-4">
+          <div class="bg-green-50 p-3 rounded-xl text-center">
+            <div class="text-2xl font-bold text-green-700">${r.conciliados}</div>
+            <div class="text-[10px] text-green-600 uppercase font-bold mt-1">Conciliados</div>
+          </div>
+          <div class="bg-amber-50 p-3 rounded-xl text-center">
+            <div class="text-2xl font-bold text-amber-700">${r.huerfanos}</div>
+            <div class="text-[10px] text-amber-600 uppercase font-bold mt-1">Huérfanos</div>
+          </div>
+          <div class="bg-slate-100 p-3 rounded-xl text-center">
+            <div class="text-2xl font-bold text-slate-700">${r.omitidos}</div>
+            <div class="text-[10px] text-slate-500 uppercase font-bold mt-1">Omitidos</div>
+          </div>
+        </div>
+    `;
+
+    if (r.detalle && r.detalle.length) {
+      html += '<p class="text-[10px] uppercase font-bold text-slate-500 mb-2">Detalle</p>';
+      html += '<div class="divide-y divide-slate-100">';
+      r.detalle.forEach(d => {
+        const estados = {
+          CONCILIADO: { color: "text-green-700", bg: "bg-green-50", icono: "fa-circle-check", texto: "Conciliado" },
+          HUERFANO:   { color: "text-amber-700", bg: "bg-amber-50", icono: "fa-question",      texto: "Huérfano" },
+          DIFERENCIA_MONTO: { color: "text-red-700", bg: "bg-red-50", icono: "fa-circle-exclamation", texto: "Diferencia" },
+          YA_CONCILIADO: { color: "text-slate-600", bg: "bg-slate-100", icono: "fa-check", texto: "Ya conciliado" },
+          ERROR_CONCILIACION: { color: "text-red-700", bg: "bg-red-50", icono: "fa-triangle-exclamation", texto: "Error" }
+        };
+        const e = estados[d.estado] || estados.HUERFANO;
+
+        html += `
+          <div class="py-2.5 flex items-center gap-3">
+            <div class="w-8 h-8 ${e.bg} rounded-lg flex items-center justify-center flex-shrink-0">
+              <i class="fa-solid ${e.icono} ${e.color} text-xs"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-xs font-mono font-semibold truncate">${escapeHtml(d.referencia)}</p>
+              ${d.motivo ? '<p class="text-[10px] text-slate-500 truncate">' + escapeHtml(d.motivo) + '</p>' : ''}
+            </div>
+            <span class="text-[10px] ${e.color} font-bold uppercase">${e.texto}</span>
+          </div>
+        `;
+      });
+      html += '</div>';
+    }
+
+    html += '</div>';
+    document.getElementById("ext-resultado-conciliacion").classList.remove("oculto");
+    document.getElementById("ext-resultado-conciliacion").innerHTML = html;
+  }
+</script>

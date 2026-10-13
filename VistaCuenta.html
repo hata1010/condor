@@ -1,0 +1,224 @@
+<div id="vista-cuenta" class="oculto fade-in max-w-2xl mx-auto">
+  <button onclick="volverAlPanel()" class="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1 mb-4">
+    <i class="fa-solid fa-arrow-left"></i> Volver al panel
+  </button>
+
+  <h2 class="text-xl font-bold mb-1">Estado de cuenta</h2>
+  <p id="cuenta-subtitulo" class="text-sm text-slate-500 mb-5">—</p>
+
+  <div id="cuenta-loading" class="text-center py-12">
+    <i class="fa-solid fa-circle-notch spin text-3xl text-indigo-600 mb-3"></i>
+    <p class="text-slate-500 text-sm">Cargando estado de cuenta...</p>
+  </div>
+
+  <div id="cuenta-contenido" class="oculto space-y-6"></div>
+</div>
+
+<script>
+  function prepararVistaCuenta() {
+    document.getElementById("cuenta-loading").classList.remove("oculto");
+    document.getElementById("cuenta-contenido").classList.add("oculto");
+    document.getElementById("cuenta-contenido").innerHTML = "";
+
+    const inmuebleId = window.sesion.inmuebleId;
+    if (!inmuebleId) {
+      document.getElementById("cuenta-loading").classList.add("oculto");
+      return;
+    }
+
+    document.getElementById("cuenta-subtitulo").textContent =
+      window.sesion.edificio + " · " + window.sesion.apartamento;
+
+    google.script.run
+      .withSuccessHandler(function(res) {
+        document.getElementById("cuenta-loading").classList.add("oculto");
+        document.getElementById("cuenta-contenido").classList.remove("oculto");
+
+        if (!res.exito) {
+          document.getElementById("cuenta-contenido").innerHTML =
+            '<div class="text-red-600 text-center py-8">Error: ' + res.error + '</div>';
+          return;
+        }
+        renderCuenta(res.data);
+      })
+      .withFailureHandler(function(err) {
+        document.getElementById("cuenta-loading").classList.add("oculto");
+        document.getElementById("cuenta-contenido").classList.remove("oculto");
+        document.getElementById("cuenta-contenido").innerHTML =
+          '<div class="text-red-600 text-center py-8">Error: ' + err.message + '</div>';
+      })
+      .apiDashboardPropietario(inmuebleId);
+  }
+
+  function renderCuenta(d) {
+    let html = "";
+
+    // ============================================================
+    // SECCIÓN 1 — RESUMEN
+    // ============================================================
+    const totalPagado = d.ultimosPagos.reduce((s, p) => s + p.monto, 0);
+    const totalPorConciliar = d.ultimosPagos
+      .filter(p => p.estado === "REGISTRADO")
+      .reduce((s, p) => s + p.monto, 0);
+    const totalConciliado = d.ultimosPagos
+      .filter(p => p.estado === "CONCILIADO" || p.estado === "APLICADO")
+      .reduce((s, p) => s + p.monto, 0);
+
+    html += `
+      <div>
+        <p class="text-xs uppercase font-bold text-slate-500 mb-2">Resumen</p>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="bg-white p-4 rounded-2xl border border-slate-200">
+            <p class="text-[10px] text-slate-500 uppercase font-bold">Total reportado</p>
+            <p class="text-lg font-bold text-slate-700 mt-1">Bs ${formatBs(totalPagado)}</p>
+          </div>
+          <div class="bg-white p-4 rounded-2xl border border-slate-200">
+            <p class="text-[10px] text-slate-500 uppercase font-bold">Por conciliar</p>
+            <p class="text-lg font-bold text-amber-600 mt-1">Bs ${formatBs(totalPorConciliar)}</p>
+          </div>
+          <div class="bg-white p-4 rounded-2xl border border-slate-200">
+            <p class="text-[10px] text-slate-500 uppercase font-bold">Saldo pendiente</p>
+            <p class="text-lg font-bold ${d.resumen.saldoPendiente > 0 ? "text-red-600" : "text-slate-400"} mt-1">Bs ${formatBs(d.resumen.saldoPendiente)}</p>
+          </div>
+          <div class="bg-white p-4 rounded-2xl border border-slate-200">
+            <p class="text-[10px] text-slate-500 uppercase font-bold">Abono a favor</p>
+            <p class="text-lg font-bold ${d.resumen.abonoDisponible > 0 ? "text-blue-600" : "text-slate-400"} mt-1">Bs ${formatBs(d.resumen.abonoDisponible)}</p>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // ============================================================
+    // SECCIÓN 2 — CUOTAS
+    // ============================================================
+    html += `
+      <div>
+        <p class="text-xs uppercase font-bold text-slate-500 mb-2">
+          Cuotas <span class="text-slate-400 font-normal">(${d.cuotas.length})</span>
+        </p>
+    `;
+
+    if (!d.cuotas.length) {
+      html += `
+        <div class="bg-white p-5 rounded-2xl border border-dashed border-slate-300 text-center">
+          <i class="fa-solid fa-inbox text-2xl text-slate-300 mb-2"></i>
+          <p class="text-xs text-slate-500">No se han emitido cuotas todavía</p>
+        </div>
+      `;
+    } else {
+      d.cuotas.forEach((c, idx) => {
+        const colores = {
+          PAGADA:    { bg: "bg-green-50",  border: "border-green-200",  texto: "text-green-700",  icono: "fa-circle-check" },
+          PARCIAL:   { bg: "bg-amber-50",  border: "border-amber-200",  texto: "text-amber-700",  icono: "fa-clock" },
+          PENDIENTE: { bg: "bg-white",     border: "border-slate-200",  texto: "text-slate-600",  icono: "fa-hourglass-half" },
+          VENCIDA:   { bg: "bg-red-50",    border: "border-red-200",    texto: "text-red-700",    icono: "fa-triangle-exclamation" },
+          ANULADA:   { bg: "bg-slate-100", border: "border-slate-300",  texto: "text-slate-400",  icono: "fa-ban" }
+        };
+        const col = colores[c.estado] || colores.PENDIENTE;
+        const idDetalle = "cuota-det-" + idx;
+
+        html += `
+          <div class="${col.bg} ${col.border} border rounded-2xl mb-2 overflow-hidden">
+            <button onclick="toggleDetalleCuota('${idDetalle}')" class="w-full p-4 flex items-center justify-between text-left">
+              <div class="flex-1 min-w-0">
+                <p class="font-bold text-sm">${escapeHtml(c.concepto)}</p>
+                <p class="text-xs text-slate-500 mt-0.5">Vence: ${escapeHtml(c.fechaVencimiento)}</p>
+              </div>
+              <div class="text-right ml-3">
+                <p class="font-bold ${col.texto}">Bs ${formatBs(c.monto)}</p>
+                <p class="text-[10px] ${col.texto} font-bold uppercase">
+                  <i class="fa-solid ${col.icono} mr-1"></i>${c.estado}
+                </p>
+              </div>
+              <i class="fa-solid fa-chevron-down text-slate-400 ml-3 text-xs transition-transform" id="${idDetalle}-icono"></i>
+            </button>
+
+            <div id="${idDetalle}" class="oculto border-t ${col.border} px-4 py-3 bg-white/60 text-xs space-y-1">
+              <div class="flex justify-between"><span class="text-slate-500">Monto original:</span><span class="font-bold">Bs ${formatBs(c.monto)}</span></div>
+              <div class="flex justify-between"><span class="text-slate-500">Pagado:</span><span class="font-bold text-green-600">Bs ${formatBs(c.pagado)}</span></div>
+              <div class="flex justify-between"><span class="text-slate-500">Saldo:</span><span class="font-bold ${c.saldo > 0 ? "text-amber-600" : "text-slate-400"}">Bs ${formatBs(c.saldo)}</span></div>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    html += `</div>`;
+
+    // ============================================================
+    // SECCIÓN 3 — MOVIMIENTOS
+    // ============================================================
+    html += `
+      <div>
+        <p class="text-xs uppercase font-bold text-slate-500 mb-2">
+          Movimientos <span class="text-slate-400 font-normal">(${d.ultimosPagos.length})</span>
+        </p>
+    `;
+
+    if (!d.ultimosPagos.length) {
+      html += `
+        <div class="bg-white p-5 rounded-2xl border border-dashed border-slate-300 text-center">
+          <i class="fa-solid fa-receipt text-2xl text-slate-300 mb-2"></i>
+          <p class="text-xs text-slate-500">Aún no hay movimientos registrados</p>
+        </div>
+      `;
+    } else {
+      html += '<div class="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100">';
+
+      d.ultimosPagos.forEach(p => {
+        const estados = {
+          REGISTRADO: { texto: "Por conciliar", color: "text-amber-600", bg: "bg-amber-50", icono: "fa-clock" },
+          CONCILIADO: { texto: "Conciliado",    color: "text-green-600", bg: "bg-green-50", icono: "fa-circle-check" },
+          APLICADO:   { texto: "Aplicado",      color: "text-green-700", bg: "bg-green-50", icono: "fa-circle-check" },
+          ANULADO:    { texto: "Anulado",       color: "text-red-600",   bg: "bg-red-50",   icono: "fa-ban" }
+        };
+        const est = estados[p.estado] || estados.REGISTRADO;
+
+         html += `
+          <div class="p-4 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3 flex-1 min-w-0">
+              <div class="w-9 h-9 ${est.bg} rounded-xl flex items-center justify-center flex-shrink-0">
+                <i class="fa-solid ${est.icono} ${est.color}"></i>
+              </div>
+              <div class="min-w-0 flex-1">
+                <p class="text-sm font-semibold truncate">${escapeHtml(p.banco || p.referencia || "Pago")}</p>
+                <p class="text-[10px] text-slate-400 truncate">
+                  ${escapeHtml(p.fecha || "—")}
+                  ${p.referencia ? " · Ref: " + escapeHtml(p.referencia) : ""}
+                </p>
+                ${p.mes && p.anio ? '<p class="text-[10px] text-blue-600 font-bold mt-0.5">📅 Aplica a: ' + escapeHtml(p.mes) + ' ' + p.anio + '</p>' : ''}
+              </div>
+            </div>
+            <div class="text-right flex-shrink-0">
+              <p class="font-bold text-green-600 text-sm">+ Bs ${formatBs(p.monto)}</p>
+              <p class="text-[10px] ${est.color} font-bold uppercase">${est.texto}</p>
+            </div>
+          </div>
+        `;
+      });
+
+      html += '</div>';
+    }
+
+    html += `</div>`;
+
+    // ============================================================
+    // RENDER
+    // ============================================================
+    document.getElementById("cuenta-contenido").innerHTML = html;
+  }
+
+  function toggleDetalleCuota(idDetalle) {
+    const el = document.getElementById(idDetalle);
+    const icono = document.getElementById(idDetalle + "-icono");
+    if (!el) return;
+    const abierto = !el.classList.contains("oculto");
+    if (abierto) {
+      el.classList.add("oculto");
+      if (icono) icono.style.transform = "rotate(0deg)";
+    } else {
+      el.classList.remove("oculto");
+      if (icono) icono.style.transform = "rotate(180deg)";
+    }
+  }
+</script>

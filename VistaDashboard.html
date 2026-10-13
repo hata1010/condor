@@ -1,0 +1,164 @@
+<div id="vista-dashboard" class="oculto fade-in max-w-2xl mx-auto">
+  <button onclick="volverAlPanel()" class="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1 mb-4">
+    <i class="fa-solid fa-arrow-left"></i> Volver al panel
+  </button>
+
+  <div id="dash-loading" class="text-center py-12">
+    <i class="fa-solid fa-circle-notch spin text-3xl text-blue-600 mb-3"></i>
+    <p class="text-slate-500 text-sm">Cargando tu panel...</p>
+  </div>
+
+  <div id="dash-contenido" class="oculto space-y-5"></div>
+</div>
+
+<script>
+  function prepararVistaDashboard() {
+    document.getElementById("dash-loading").classList.remove("oculto");
+    document.getElementById("dash-contenido").classList.add("oculto");
+    document.getElementById("dash-contenido").innerHTML = "";
+
+    const inmuebleId = window.sesion.inmuebleId;
+    if (!inmuebleId) {
+      document.getElementById("dash-loading").classList.add("oculto");
+      document.getElementById("dash-contenido").classList.remove("oculto");
+      document.getElementById("dash-contenido").innerHTML =
+        '<div class="text-center py-8 text-slate-500">Sin inmueble asignado.</div>';
+      return;
+    }
+
+    google.script.run
+      .withSuccessHandler(function(res) {
+        document.getElementById("dash-loading").classList.add("oculto");
+        document.getElementById("dash-contenido").classList.remove("oculto");
+
+        if (!res.exito) {
+          document.getElementById("dash-contenido").innerHTML =
+            '<div class="text-red-600 text-center py-8">Error: ' + res.error + '</div>';
+          return;
+        }
+        renderDashboard(res.data);
+      })
+      .withFailureHandler(function(err) {
+        document.getElementById("dash-loading").classList.add("oculto");
+        document.getElementById("dash-contenido").classList.remove("oculto");
+        document.getElementById("dash-contenido").innerHTML =
+          '<div class="text-red-600 text-center py-8">Error: ' + err.message + '</div>';
+      })
+      .apiDashboardPropietario(inmuebleId);
+  }
+
+  function renderDashboard(d) {
+    const colorEstado = d.estadoGeneral === "SOLVENTE"
+      ? { bg: "bg-green-50", border: "border-green-300", texto: "text-green-800", icono: "fa-circle-check" }
+      : d.estadoGeneral === "EN_MORA"
+        ? { bg: "bg-red-50", border: "border-red-300", texto: "text-red-800", icono: "fa-triangle-exclamation" }
+        : { bg: "bg-blue-50", border: "border-blue-300", texto: "text-blue-800", icono: "fa-clock" };
+
+    const estadoTexto = d.estadoGeneral === "SOLVENTE" ? "Solvente"
+      : d.estadoGeneral === "EN_MORA" ? "En mora"
+      : "Al día";
+
+    let html = "";
+
+    // Bienvenida + estado grande
+    html += `
+      <div>
+        <p class="text-xs text-slate-500 uppercase font-bold">Panel del propietario</p>
+        <h2 class="text-lg font-bold">Hola, ${escapeHtml(window.sesion.propietario)}</h2>
+        <p class="text-sm text-slate-500">${escapeHtml(window.sesion.edificio)} · ${escapeHtml(window.sesion.apartamento)}</p>
+      </div>
+
+      <div class="p-5 rounded-2xl border-2 ${colorEstado.bg} ${colorEstado.border} ${colorEstado.texto}">
+        <div class="flex justify-between items-center">
+          <div>
+            <p class="text-xs uppercase font-bold">Estado de cuenta ${d.periodo}</p>
+            <p class="text-2xl font-bold mt-1">${estadoTexto}</p>
+          </div>
+          <i class="fa-solid ${colorEstado.icono} text-5xl opacity-40"></i>
+        </div>
+      </div>
+    `;
+
+    // KPIs 2x2
+    html += `
+      <div class="grid grid-cols-2 gap-3">
+        <div class="bg-white p-4 rounded-2xl border border-slate-200">
+          <p class="text-[10px] text-slate-500 uppercase font-bold">Cuota mensual</p>
+          <p class="text-lg font-bold mt-1">Bs ${formatBs(d.cuotaMensual)}</p>
+        </div>
+        <div class="bg-white p-4 rounded-2xl border border-slate-200">
+          <p class="text-[10px] text-slate-500 uppercase font-bold">Meses al día</p>
+          <p class="text-lg font-bold text-blue-600 mt-1">${d.resumen.mesesPagados}</p>
+        </div>
+        <div class="bg-white p-4 rounded-2xl border border-slate-200">
+          <p class="text-[10px] text-slate-500 uppercase font-bold">Saldo pendiente</p>
+          <p class="text-lg font-bold ${d.resumen.saldoPendiente > 0 ? "text-amber-600" : "text-slate-400"} mt-1">Bs ${formatBs(d.resumen.saldoPendiente)}</p>
+        </div>
+        <div class="bg-white p-4 rounded-2xl border border-slate-200">
+          <p class="text-[10px] text-slate-500 uppercase font-bold">Interés mora</p>
+          <p class="text-lg font-bold ${d.resumen.interesMora > 0 ? "text-red-600" : "text-slate-400"} mt-1">Bs ${formatBs(d.resumen.interesMora)}</p>
+        </div>
+      </div>
+    `;
+
+    // Abono a favor
+    if (d.resumen.abonoDisponible > 0) {
+      html += `
+        <div class="p-4 bg-blue-50 border border-blue-200 rounded-2xl">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+              <i class="fa-solid fa-piggy-bank text-blue-600"></i>
+            </div>
+            <div class="flex-1">
+              <p class="text-xs font-bold text-blue-900">Abono a favor</p>
+              <p class="text-sm text-blue-700">Bs ${formatBs(d.resumen.abonoDisponible)} <span class="text-xs">disponibles</span></p>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Últimos pagos
+    if (d.ultimosPagos.length) {
+      html += `
+        <div class="bg-white p-4 rounded-2xl border border-slate-200">
+          <p class="text-[10px] uppercase font-bold text-slate-600 mb-3">
+            <i class="fa-solid fa-clock-rotate-left mr-1"></i> Últimos pagos
+          </p>
+          <div class="divide-y divide-slate-100">
+            ${d.ultimosPagos.map(p => `
+              <div class="py-2 flex justify-between items-center text-xs">
+                <div>
+                  <div class="font-semibold">${escapeHtml(p.mes)} ${escapeHtml(p.ano || "")}</div>
+                  <div class="text-slate-400 text-[10px]">${escapeHtml(p.fecha)} · ${escapeHtml(p.banco || "—")}</div>
+                </div>
+                <div class="font-bold text-green-600">Bs ${formatBs(p.monto)}</div>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+      `;
+    } else {
+      html += `
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 text-center">
+          <i class="fa-solid fa-inbox text-3xl text-slate-300 mb-2"></i>
+          <p class="text-sm text-slate-500">Aún no hay pagos registrados</p>
+        </div>
+      `;
+    }
+
+    // Botones de acción
+    html += `
+      <div class="grid grid-cols-1 gap-3">
+        <button onclick="irA('pago')" class="py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl">
+          <i class="fa-solid fa-receipt mr-2"></i> Reportar pago
+        </button>
+        <button onclick="irA('cuenta')" class="py-3 bg-white border border-slate-300 hover:border-blue-600 font-bold rounded-xl text-slate-700">
+          <i class="fa-solid fa-list mr-2"></i> Ver estado de cuenta
+        </button>
+      </div>
+    `;
+
+    document.getElementById("dash-contenido").innerHTML = html;
+  }
+</script>
